@@ -22,6 +22,11 @@ from django.conf import settings
 from django_apscheduler.jobstores import DjangoJobStore
 from django_apscheduler.models import DjangoJobExecution
 
+try:
+    from croniter import croniter
+except ImportError:  # missed-run detection is skipped if croniter is unavailable
+    croniter = None
+
 logger = logging.getLogger("scheduler")
 
 # Module-level singleton scheduler instance.
@@ -129,6 +134,58 @@ def _cleanup_history() -> None:
         logger.exception("Log retention cleanup failed")
 
 
+def check_missed_runs() -> int:
+    """
+    Heartbeat: for each active scheduled job, if the most recent scheduled time
+    has passed (plus its grace period) and no run was recorded for it, send a
+    "missed run" alert (once per scheduled time). Returns the number of alerts sent.
+    """
+    if croniter is None:
+        return 0
+
+    from django.utils import timezone
+    from scheduler.models import Job
+    from scheduler.services import logreader, notifications
+
+    now = timezone.now()
+    alerts = 0
+    for job in Job.objects.filter(is_active=True).exclude(cron_expression=""):
+        try:
+            base = timezone.localtime(now)
+            expected_local = croniter(job.cron_expression, base).get_prev(type(base))
+        except (ValueError, KeyError):
+            continue
+        expected = expected_local.astimezone(_dt_utc())
+        deadline = expected + _timedelta(seconds=job.grace_period_seconds)
+        if now < deadline:
+            continue  # still within the grace window
+
+        runs = logreader.list_runs_for_job(job)
+        if any(r.started and r.started >= expected for r in runs):
+            continue  # a run was recorded for this scheduled time
+
+        # Missed; alert once per scheduled time.
+        if job.last_missed_alert_for is None or expected > job.last_missed_alert_for:
+            try:
+                notifications.send_missed_notification(job, expected_local)
+            except Exception:  # pragma: no cover
+                logger.exception("Missed-run notification failed for %s", job.name)
+            job.last_missed_alert_for = expected
+            job.save(update_fields=["last_missed_alert_for"])
+            alerts += 1
+    return alerts
+
+
+def _dt_utc():
+    import datetime
+    return datetime.UTC
+
+
+def _timedelta(**kw):
+    import datetime
+    return datetime.timedelta(**kw)
+
+
 def start() -> None:
     """
     Starts the scheduler. Called once from AppConfig.ready() in apps.py.
@@ -159,6 +216,15 @@ def start() -> None:
         _cleanup_history,
         trigger=CronTrigger(hour="0", minute="0"),
         id="internal_cleanup_history",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Missed-run / heartbeat check: every minute.
+    _scheduler.add_job(
+        check_missed_runs,
+        trigger=CronTrigger(second="30"),
+        id="internal_check_missed_runs",
         replace_existing=True,
         max_instances=1,
     )

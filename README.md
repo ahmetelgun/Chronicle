@@ -25,10 +25,15 @@ scheduler (from cron or by hand) also appear on the dashboard.
   metrics (`@metric`), event categories (`@event`), and the **custom footer
   fields** written by scripts — all collected from log files.
 - **Job management:** add/edit/delete, **duplicate**, cron validation, timeout.
+- **Per-job env vars + parameterized Run Now:** static env vars plus run-time
+  parameters prompted on trigger and passed to the script as env vars.
 - **Run Now:** Admin/Operator trigger manually; asynchronous in the background, with **flock** locking.
 - **Live list:** running jobs update without a page refresh once they finish (JSON polling).
 - **Logs:** read from files; color-coded level stream, metric/event/custom-field summaries.
-- **Notification:** Slack/Teams webhook alerts on failure/timeout.
+- **Trends:** historical charts (success/failure, duration, RAM, CPU) over the last 14 days (Chart.js).
+- **Notifications:** Slack/Teams **webhook + email** channels with smart routing —
+  alert only after N consecutive failures, notify on **recovery**, and detect
+  **missed scheduled runs** (heartbeat) via the grace period.
 - **Retention:** `.log` files older than N days are deleted automatically.
 
 ## Directory Structure

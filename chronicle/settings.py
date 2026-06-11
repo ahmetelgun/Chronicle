@@ -165,6 +165,22 @@ LOG_RETENTION_DAYS = int(os.getenv("LOG_RETENTION_DAYS", "30"))
 RESOURCE_SAMPLE_INTERVAL = float(os.getenv("RESOURCE_SAMPLE_INTERVAL", "0.1"))
 
 # ==========================================================================
+#  Email (used by the notification "email" channel)
+#  In development with no SMTP host, falls back to the console backend.
+# ==========================================================================
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+else:
+    # No SMTP configured -> print emails to the console (dev/test).
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("EMAIL_FROM", "chronicle@localhost")
+
+# ==========================================================================
 #  LDAP Authentication & RBAC Mapping
 #  (django-auth-ldap)
 # ==========================================================================

@@ -74,6 +74,30 @@
                     {% for e in form.timeout_seconds.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
                 </div>
             </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Grace period (seconds)</label>
+                    <div class="control has-icons-left">
+                        {{ form.grace_period_seconds }}
+                        <span class="icon is-small is-left"><i class="fas fa-heart-pulse"></i></span>
+                    </div>
+                    <p class="help">Missed-run alert fires this long after a scheduled time with no run.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">{{ form.env_vars_text.label }}</label>
+            <div class="control">{{ form.env_vars_text }}</div>
+            <p class="help">{{ form.env_vars_text.help_text }}</p>
+            {% for e in form.env_vars_text.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label class="label">{{ form.run_parameters_text.label }}</label>
+            <div class="control">{{ form.run_parameters_text }}</div>
+            <p class="help">{{ form.run_parameters_text.help_text }}</p>
+            {% for e in form.run_parameters_text.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
         </div>
 
         <div class="field">

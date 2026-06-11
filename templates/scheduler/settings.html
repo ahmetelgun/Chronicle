@@ -43,6 +43,35 @@
         </div>
 
         <hr>
+        <h2 class="title is-5">Email channel</h2>
+        <div class="field">
+            <label class="checkbox">{{ form.email_enabled }} Send email alerts</label>
+        </div>
+        <div class="field">
+            <label class="label">Email recipients</label>
+            <div class="control has-icons-left">
+                {{ form.email_recipients }}
+                <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
+            </div>
+            <p class="help">Comma-separated. SMTP is configured via <code>EMAIL_*</code> environment variables.</p>
+            {% for e in form.email_recipients.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <hr>
+        <h2 class="title is-5">Smart routing</h2>
+        <div class="field">
+            <label class="label">Alert after N consecutive failures</label>
+            <div class="control">{{ form.min_consecutive_failures }}</div>
+            <p class="help">1 = alert on every failure; higher values suppress flapping.</p>
+        </div>
+        <div class="field">
+            <label class="checkbox">{{ form.notify_on_recovery }} Notify on recovery (back to success)</label>
+        </div>
+        <div class="field">
+            <label class="checkbox">{{ form.notify_on_missed }} Notify on missed scheduled run (heartbeat)</label>
+        </div>
+
+        <hr>
         <button class="button is-primary" type="submit">
             <span class="icon"><i class="fas fa-save"></i></span><span>Save</span>
         </button>
@@ -50,9 +79,8 @@
 </div>
 
 <div class="notification is-info is-light is-size-7">
-    <strong>Tip:</strong> If the webhook URL is left empty, no notifications are sent.
-    The notification message includes the script name, status, exit code, triggering user, and
-    the first 200 characters of the error log.
+    <strong>Tip:</strong> Channels (webhook and/or email) and routing apply together.
+    Missed-run alerts require a cron schedule and run within the job's grace period.
 </div>
 </div>
 </div>

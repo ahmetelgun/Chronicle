@@ -13,6 +13,7 @@ from __future__ import annotations
 import fcntl
 import logging
 import os
+import re
 import signal
 import subprocess
 import threading
@@ -110,7 +111,21 @@ def _release_lock(fd) -> None:
 # ----------------------------------------------------------------------------
 #  Execution core
 # ----------------------------------------------------------------------------
-def _run_subprocess(job, *, trigger_type: str, user, script_file: Path, cwd: Path) -> None:
+_ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _merge_env(env: dict, extra) -> None:
+    """Merges extra env vars into env, keeping only valid string key/values."""
+    if not extra:
+        return
+    for key, value in dict(extra).items():
+        key = str(key)
+        if _ENV_KEY_RE.match(key):
+            env[key] = str(value)
+
+
+def _run_subprocess(job, *, trigger_type: str, user, script_file: Path, cwd: Path,
+                    extra_env=None) -> None:
     """Runs the script, applies a timeout, and sends a notification on failure."""
     env = {
         "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
@@ -123,6 +138,10 @@ def _run_subprocess(job, *, trigger_type: str, user, script_file: Path, cwd: Pat
     pythonpath = build_pythonpath(script_file.parent)
     if pythonpath:
         env["PYTHONPATH"] = pythonpath
+
+    # Static per-job env vars, then run-time parameters (validated, string values).
+    _merge_env(env, getattr(job, "env_vars", None))
+    _merge_env(env, extra_env)
 
     logger.info("Starting script: %s -> %s (cwd=%s)", job.name, script_file, cwd)
 
@@ -148,7 +167,7 @@ def _run_subprocess(job, *, trigger_type: str, user, script_file: Path, cwd: Pat
         exit_code = proc.wait()
 
     logger.info("Script finished: %s (exit=%s)", job.name, exit_code)
-    _notify_if_failed(job)
+    _evaluate_notifications(job)
 
 
 def _kill_process_group(proc) -> None:
@@ -165,15 +184,36 @@ def _kill_process_group(proc) -> None:
             pass
 
 
-def _notify_if_failed(job) -> None:
-    """Reads the most recent produced log file and sends a webhook notification on failure."""
+def _evaluate_notifications(job) -> None:
+    """
+    Smart routing based on the run history in the log files:
+      * failure  — alert once the consecutive-failure count reaches the threshold
+      * recovery — alert when this run succeeded but the previous one had failed
+    Notifications must never break the main flow.
+    """
     try:
-        from scheduler.services import logreader
-        from scheduler.services.notifications import send_failure_notification
+        from scheduler.models import NotificationSetting
+        from scheduler.services import logreader, notifications
 
         runs = logreader.list_runs_for_job(job)
-        if runs and runs[0].is_failure:
-            send_failure_notification(runs[0])
+        if not runs:
+            return
+        current = runs[0]
+        setting = NotificationSetting.load()
+
+        if current.is_failure:
+            consecutive = 0
+            for r in runs:
+                if r.is_failure:
+                    consecutive += 1
+                else:
+                    break
+            if consecutive >= setting.min_consecutive_failures:
+                notifications.send_failure_notification(current)
+        else:
+            # Recovery: previous run was a failure.
+            if len(runs) >= 2 and runs[1].is_failure:
+                notifications.send_recovery_notification(current)
     except Exception:  # pragma: no cover - notifications must not break the main flow
         logger.exception("Unexpected error sending notification")
 
@@ -181,11 +221,11 @@ def _notify_if_failed(job) -> None:
 # ----------------------------------------------------------------------------
 #  Public API
 # ----------------------------------------------------------------------------
-def run_job_async(job, *, trigger_type: str, user=None) -> None:
+def run_job_async(job, *, trigger_type: str, user=None, extra_env=None) -> None:
     """
     Runs the script in the background (separate thread) — does not block the web request.
     The lock is acquired synchronously; if it cannot be acquired, JobAlreadyRunningError
-    is raised immediately.
+    is raised immediately. `extra_env` carries run-time parameters as env vars.
     """
     lock_fd, script_file, cwd = _acquire_lock(job)
 
@@ -193,7 +233,7 @@ def run_job_async(job, *, trigger_type: str, user=None) -> None:
         try:
             _run_subprocess(
                 job, trigger_type=trigger_type, user=user,
-                script_file=script_file, cwd=cwd,
+                script_file=script_file, cwd=cwd, extra_env=extra_env,
             )
         finally:
             _release_lock(lock_fd)
@@ -202,13 +242,13 @@ def run_job_async(job, *, trigger_type: str, user=None) -> None:
     thread.start()
 
 
-def run_job_sync(job, *, trigger_type: str, user=None) -> None:
+def run_job_sync(job, *, trigger_type: str, user=None, extra_env=None) -> None:
     """Synchronous execution (called from the scheduler thread pool)."""
     lock_fd, script_file, cwd = _acquire_lock(job)
     try:
         _run_subprocess(
             job, trigger_type=trigger_type, user=user,
-            script_file=script_file, cwd=cwd,
+            script_file=script_file, cwd=cwd, extra_env=extra_env,
         )
     finally:
         _release_lock(lock_fd)

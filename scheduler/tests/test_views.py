@@ -51,7 +51,8 @@ class AccessTests(ScriptTestCase):
             resp = self.client.post(reverse("job_create"), {
                 "name": "New", "description": "", "script_path": self.ok_script,
                 "working_directory": "", "cron_expression": "0 2 * * *",
-                "timeout_seconds": 60, "is_active": "on",
+                "timeout_seconds": 60, "grace_period_seconds": 300, "is_active": "on",
+                "env_vars_text": "", "run_parameters_text": "",
             })
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Job.objects.filter(name="New").exists())
@@ -220,6 +221,8 @@ class DuplicateAndSettingsTests(ScriptTestCase):
         resp = self.client.post(reverse("settings"), {
             "provider": "SLACK", "webhook_url": "https://hooks.slack.com/x",
             "notify_on_failure": "on", "notify_on_timeout": "on",
+            "email_recipients": "", "min_consecutive_failures": 1,
+            "notify_on_recovery": "on", "notify_on_missed": "on",
         })
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(NotificationSetting.load().webhook_url, "https://hooks.slack.com/x")

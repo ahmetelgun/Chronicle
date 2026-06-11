@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Run {{ job.name }}{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+<div class="column is-6-desktop is-8-tablet">
+    <h1 class="title is-4">
+        <span class="icon-text">
+            <span class="icon"><i class="fas fa-play"></i></span>
+            <span>Run "{{ job.name }}"</span>
+        </span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey">Fill in the parameters for this run.</p>
+
+    <div class="box">
+        <form method="post" action="{% url 'job_run' job.pk %}">
+            {% csrf_token %}
+            {% for p in job.run_parameters %}
+            <div class="field">
+                <label class="label">{{ p.label|default:p.name }}
+                    <span class="has-text-grey is-size-7">({{ p.name }})</span>
+                </label>
+                <div class="control">
+                    <input class="input" type="text" name="{{ p.name }}"
+                           value="{{ p.default }}" placeholder="{{ p.default }}">
+                </div>
+            </div>
+            {% empty %}
+            <p class="has-text-grey">This job has no parameters.</p>
+            {% endfor %}
+            <hr>
+            <div class="field is-grouped">
+                <div class="control">
+                    <button class="button is-success" type="submit">
+                        <span class="icon"><i class="fas fa-play"></i></span><span>Run Now</span>
+                    </button>
+                </div>
+                <div class="control">
+                    <a class="button is-light" href="{% url 'job_list' %}">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}

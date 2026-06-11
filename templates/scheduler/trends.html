@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Trends{% endblock %}
+
+{% block content %}
+<h1 class="title is-3">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-chart-line"></i></span>
+        <span>Trends</span>
+    </span>
+    <span class="is-size-6 has-text-grey ml-2">(last {{ days }} days)</span>
+</h1>
+
+{{ chart|json_script:"chart-data" }}
+
+<div class="columns is-multiline">
+    <div class="column is-6">
+        <div class="box">
+            <h2 class="title is-5">Runs (success / failed)</h2>
+            <canvas id="runsChart" height="140"></canvas>
+        </div>
+    </div>
+    <div class="column is-6">
+        <div class="box">
+            <h2 class="title is-5">Average duration (s)</h2>
+            <canvas id="durationChart" height="140"></canvas>
+        </div>
+    </div>
+    <div class="column is-6">
+        <div class="box">
+            <h2 class="title is-5">RAM (MB) — avg &amp; peak</h2>
+            <canvas id="ramChart" height="140"></canvas>
+        </div>
+    </div>
+    <div class="column is-6">
+        <div class="box">
+            <h2 class="title is-5">Average CPU (%)</h2>
+            <canvas id="cpuChart" height="140"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const d = JSON.parse(document.getElementById("chart-data").textContent);
+    const base = { responsive: true, maintainAspectRatio: false,
+                   plugins: { legend: { display: true } } };
+
+    new Chart(document.getElementById("runsChart"), {
+        type: "bar",
+        data: { labels: d.labels, datasets: [
+            { label: "Success", data: d.success, backgroundColor: "#48c78e" },
+            { label: "Failed",  data: d.failed,  backgroundColor: "#f14668" },
+        ]},
+        options: { ...base, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } },
+    });
+
+    new Chart(document.getElementById("durationChart"), {
+        type: "line",
+        data: { labels: d.labels, datasets: [
+            { label: "Avg duration (s)", data: d.avg_duration, borderColor: "#3e8ed0",
+              backgroundColor: "rgba(62,142,208,.15)", fill: true, tension: .3 },
+        ]},
+        options: base,
+    });
+
+    new Chart(document.getElementById("ramChart"), {
+        type: "line",
+        data: { labels: d.labels, datasets: [
+            { label: "Avg RAM (MB)",  data: d.avg_rss,  borderColor: "#3e8ed0", tension: .3 },
+            { label: "Peak RAM (MB)", data: d.peak_rss, borderColor: "#ffe08a", tension: .3 },
+        ]},
+        options: base,
+    });
+
+    new Chart(document.getElementById("cpuChart"), {
+        type: "line",
+        data: { labels: d.labels, datasets: [
+            { label: "Avg CPU (%)", data: d.avg_cpu, borderColor: "#b86bff",
+              backgroundColor: "rgba(184,107,255,.15)", fill: true, tension: .3 },
+        ]},
+        options: base,
+    });
+})();
+</script>
+{% endblock %}

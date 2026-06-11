@@ -51,6 +51,21 @@ class Job(models.Model):
 
     is_active = models.BooleanField("Active", default=True)
 
+    # Static per-job environment variables, merged into the sanitized run env.
+    # {"KEY": "value", ...}
+    env_vars = models.JSONField("Environment variables", default=dict, blank=True)
+
+    # Run-time parameter definitions filled in on "Run Now". Each item:
+    #   {"name": "TARGET", "default": "", "required": false, "label": "Target host"}
+    # Submitted values are passed to the run as environment variables.
+    run_parameters = models.JSONField("Run parameters", default=list, blank=True)
+
+    # Missed-run / heartbeat detection: how long (seconds) after a scheduled time to
+    # wait before declaring the run "missed".
+    grace_period_seconds = models.PositiveIntegerField("Grace period (s)", default=300)
+    # The scheduled time we last alerted about as missed (avoids duplicate alerts).
+    last_missed_alert_for = models.DateTimeField(null=True, blank=True, editable=False)
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -172,6 +187,24 @@ class NotificationSetting(models.Model):
     notify_on_timeout = models.BooleanField(
         "Notify on timeout", default=True
     )
+
+    # --- Email channel (SMTP config comes from Django settings / env) ---
+    email_enabled = models.BooleanField("Send email alerts", default=False)
+    email_recipients = models.CharField(
+        "Email recipients", max_length=1000, blank=True,
+        help_text="Comma-separated email addresses.",
+    )
+
+    # --- Smart routing ---
+    # Only alert once this many consecutive failures have occurred (1 = every failure).
+    min_consecutive_failures = models.PositiveIntegerField(
+        "Alert after N consecutive failures", default=1
+    )
+    # Send a "recovered" notification when a job goes back to success after failing.
+    notify_on_recovery = models.BooleanField("Notify on recovery", default=True)
+    # Send an alert when a scheduled run is missed (heartbeat).
+    notify_on_missed = models.BooleanField("Notify on missed run", default=True)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

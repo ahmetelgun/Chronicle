@@ -90,6 +90,12 @@
             <td class="is-vcentered has-text-right">
                 <div class="buttons is-right are-small">
                     {% if can_run %}
+                    {% if job.run_parameters %}
+                    <a class="button is-success is-small js-run-btn" href="{% url 'job_run_form' job.pk %}"
+                       title="Run Now (with parameters)" {% if not job.is_active or job.is_running %}disabled{% endif %}>
+                        <span class="icon is-small"><i class="fas fa-play"></i></span><span>Run…</span>
+                    </a>
+                    {% else %}
                     <form method="post" action="{% url 'job_run' job.pk %}" style="display:inline;">
                         {% csrf_token %}
                         <button class="button is-success is-small js-run-btn" type="submit"
@@ -99,6 +105,7 @@
                             <span>Run</span>
                         </button>
                     </form>
+                    {% endif %}
                     {% endif %}
                     {% if can_manage %}
                     <a class="button is-small is-info is-light" href="{% url 'job_update' job.pk %}" title="Edit">

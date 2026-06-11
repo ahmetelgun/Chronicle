@@ -20,6 +20,12 @@
     <div class="level-right">
         <div class="buttons">
             {% if can_run %}
+            {% if job.run_parameters %}
+            <a class="button is-success" href="{% url 'job_run_form' job.pk %}"
+               {% if not job.is_active or job.is_running %}disabled{% endif %}>
+                <span class="icon"><i class="fas fa-play"></i></span><span>Run Now…</span>
+            </a>
+            {% else %}
             <form method="post" action="{% url 'job_run' job.pk %}">
                 {% csrf_token %}
                 <button class="button is-success" type="submit"
@@ -27,6 +33,7 @@
                     <span class="icon"><i class="fas fa-play"></i></span><span>Run Now</span>
                 </button>
             </form>
+            {% endif %}
             {% endif %}
             {% if can_manage %}
             <a class="button is-info is-light" href="{% url 'job_update' job.pk %}">

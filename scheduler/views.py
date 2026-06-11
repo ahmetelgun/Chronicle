@@ -236,6 +236,16 @@ def duplicate_job(request, pk: int):
 # ---------------------------------------------------------------------------
 #  Run Now — manual asynchronous trigger (Admin/Operator)
 # ---------------------------------------------------------------------------
+@require_GET
+def job_run_form(request, pk: int):
+    """Parameter form shown before running a job that declares run parameters."""
+    if not can_run(request.user):
+        messages.error(request, "You don't have permission for this action.")
+        return redirect("job_list")
+    job = get_object_or_404(Job, pk=pk)
+    return render(request, "scheduler/job_run_form.html", {"job": job})
+
+
 @require_POST
 def run_now(request, pk: int):
     if not can_run(request.user):
@@ -247,15 +257,23 @@ def run_now(request, pk: int):
         messages.warning(request, f"'{job.name}' is inactive and cannot run.")
         return redirect(request.META.get("HTTP_REFERER", reverse("job_list")))
 
+    # Collect run-time parameters (if any) into env vars for this run only.
+    extra_env = {}
+    for param in (job.run_parameters or []):
+        name = param.get("name")
+        if name:
+            extra_env[name] = request.POST.get(name, param.get("default", ""))
+
     try:
-        executor.run_job_async(job, trigger_type="MANUAL", user=request.user)
+        executor.run_job_async(job, trigger_type="MANUAL", user=request.user,
+                               extra_env=extra_env or None)
         messages.success(request, f"'{job.name}' started in the background. Logs will appear in a few seconds.")
     except executor.JobAlreadyRunningError:
         messages.warning(request, f"'{job.name}' is already running. Wait for it to finish.")
     except executor.ExecutionError as exc:
         messages.error(request, f"Execution error: {exc}")
 
-    return redirect(request.META.get("HTTP_REFERER", reverse("job_list")))
+    return redirect("job_list")
 
 
 @require_GET
@@ -339,7 +357,62 @@ def log_detail(request, token: str):
 
 
 # ---------------------------------------------------------------------------
-#  Settings — webhook (Admin)
+#  Trends — historical charts (from log file footers)
+# ---------------------------------------------------------------------------
+@require_GET
+def trends(request):
+    if not can_view(request.user):
+        raise Http404
+    days = 14
+    today = timezone.localdate()
+    start = today - timedelta(days=days - 1)
+    cutoff = timezone.now() - timedelta(days=days)
+    runs = logreader.runs_since(cutoff)
+
+    # One bucket per day.
+    labels = [(start + timedelta(days=i)).isoformat() for i in range(days)]
+    bucket = {lbl: {"success": 0, "failed": 0, "dur": [], "rss": [], "cpu": []}
+              for lbl in labels}
+    for r in runs:
+        if not r.started:
+            continue
+        key = timezone.localtime(r.started).date().isoformat()
+        b = bucket.get(key)
+        if b is None:
+            continue
+        if r.status == "SUCCESS":
+            b["success"] += 1
+        elif r.status in _FAILURE_STATUSES:
+            b["failed"] += 1
+        if r.duration_sec is not None:
+            b["dur"].append(r.duration_sec)
+        if r.max_rss_mb is not None:
+            b["rss"].append(r.max_rss_mb)
+        if r.cpu_pct is not None:
+            b["cpu"].append(r.cpu_pct)
+
+    def avg(xs):
+        return round(sum(xs) / len(xs), 2) if xs else 0
+
+    chart = {
+        "labels": labels,
+        "success": [bucket[l]["success"] for l in labels],
+        "failed": [bucket[l]["failed"] for l in labels],
+        "avg_duration": [avg(bucket[l]["dur"]) for l in labels],
+        "avg_rss": [avg(bucket[l]["rss"]) for l in labels],
+        "peak_rss": [max(bucket[l]["rss"]) if bucket[l]["rss"] else 0 for l in labels],
+        "avg_cpu": [avg(bucket[l]["cpu"]) for l in labels],
+    }
+    return render(request, "scheduler/trends.html", {
+        "chart": chart,
+        "days": days,
+        "can_run": can_run(request.user),
+        "can_manage": can_manage(request.user),
+    })
+
+
+# ---------------------------------------------------------------------------
+#  Settings — notifications (Admin)
 # ---------------------------------------------------------------------------
 class SettingsView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
     model = NotificationSetting
