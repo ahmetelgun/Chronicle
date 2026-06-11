@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+    <div class="column is-4-desktop is-6-tablet">
+        <div class="box mt-5">
+            <h1 class="title is-4 has-text-centered">
+                <span class="icon-text">
+                    <span class="icon"><i class="fas fa-lock"></i></span>
+                    <span>Sign In with LDAP</span>
+                </span>
+            </h1>
+
+            {% if form.errors %}
+            <div class="notification is-danger is-light">
+                Incorrect username or password. Please try again.
+            </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="field">
+                    <label class="label">Username</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="text" name="username"
+                               autofocus required placeholder="your corporate username">
+                        <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Password</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="password" name="password"
+                               required placeholder="••••••••">
+                        <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+                    </div>
+                </div>
+                <input type="hidden" name="next" value="{{ next }}">
+                <div class="field mt-5">
+                    <button class="button is-primary is-fullwidth" type="submit">
+                        <span class="icon"><i class="fas fa-right-to-bracket"></i></span>
+                        <span>Sign In</span>
+                    </button>
+                </div>
+            </form>
+            <p class="has-text-centered is-size-7 has-text-grey mt-4">
+                Sign in with your corporate LDAP/Active Directory account.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

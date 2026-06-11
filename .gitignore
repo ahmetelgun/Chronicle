@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django
+*.log
+# keep the reference example logs in the repo
+!examples/*.log
+db.sqlite3
+db.sqlite3-journal
+/media/
+/staticfiles/
+
+# Runtime log directories (real logs produced by the scripts)
+scripts/logs/
+
+# Secrets
+.env
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,24 @@
+# ===================== EXECUTION LOG (UTC) =====================
+# job:        Nightly Backup
+# script:     /opt/chronicle/scripts/backup.sh
+# cwd:        /opt/chronicle/scripts
+# trigger:    SCHEDULER
+# user:       svc_scheduler
+# pid:        1002
+# started:    2026-01-01 02:00:00.005
+# ==============================================================
+2026-01-01 02:00:00.010  INFO    Backup started
+2026-01-01 02:00:00.011  OUT     Source: /data
+2026-01-01 02:00:00.250  ERROR   tar: /data/locked.db: file locked, skipping
+2026-01-01 02:00:00.251  ERR     tar: exited with code 1
+# --------------------------------------------------------------
+# status:           FAILED
+# exit_code:        1
+# finished:         2026-01-01 02:00:00.260
+# duration_sec:     0.26
+# cpu_time_sec:     0.12
+# cpu_pct:          46.2
+# max_rss_mb:       8.1
+# summary_events:   error=1
+# summary_metrics:  -
+# ==============================================================

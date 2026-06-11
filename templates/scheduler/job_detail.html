@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load scheduler_extras %}
+{% block title %}{{ job.name }}{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+        <li><a href="{% url 'job_list' %}">Scripts</a></li>
+        <li class="is-active"><a aria-current="page">{{ job.name }}</a></li>
+    </ul>
+</nav>
+
+<div class="level">
+    <div class="level-left">
+        <h1 class="title is-3">{{ job.name }}
+            {% if job.is_active %}<span class="tag is-success is-medium ml-2">Active</span>
+            {% else %}<span class="tag is-light is-medium ml-2">Inactive</span>{% endif %}
+        </h1>
+    </div>
+    <div class="level-right">
+        <div class="buttons">
+            {% if can_run %}
+            <form method="post" action="{% url 'job_run' job.pk %}">
+                {% csrf_token %}
+                <button class="button is-success" type="submit"
+                        {% if not job.is_active or job.is_running %}disabled{% endif %}>
+                    <span class="icon"><i class="fas fa-play"></i></span><span>Run Now</span>
+                </button>
+            </form>
+            {% endif %}
+            {% if can_manage %}
+            <a class="button is-info is-light" href="{% url 'job_update' job.pk %}">
+                <span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span>
+            </a>
+            <form method="post" action="{% url 'job_duplicate' job.pk %}">
+                {% csrf_token %}
+                <button class="button is-light" type="submit">
+                    <span class="icon"><i class="fas fa-clone"></i></span><span>Duplicate</span>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="columns">
+    <div class="column is-5">
+        <div class="box">
+            <h2 class="title is-5">Definition</h2>
+            <table class="table is-fullwidth">
+                <tbody>
+                    <tr><th>File Path</th><td><code>{{ job.script_path }}</code></td></tr>
+                    <tr><th>Working Directory</th><td><code>{{ job.working_directory|default:"(script directory)" }}</code></td></tr>
+                    <tr><th>Cron</th><td>{% if job.cron_expression %}<code>{{ job.cron_expression }}</code>{% else %}<span class="tag is-light">Manual</span>{% endif %}</td></tr>
+                    <tr><th>Next Run</th><td>{{ job.next_run_time|date:"d.m.Y H:i"|default:"—" }}</td></tr>
+                    <tr><th>Timeout</th><td>{{ job.timeout_seconds }} s</td></tr>
+                    <tr><th>Created by</th><td>{{ job.created_by|default:"—" }}</td></tr>
+                </tbody>
+            </table>
+            {% if job.description %}<p class="has-text-grey">{{ job.description }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="column is-7">
+        <div class="box">
+            <h2 class="title is-5">Recent Runs</h2>
+            <table class="table is-fullwidth is-hoverable is-narrow">
+                <thead><tr><th>Status</th><th>Triggered by</th><th>Start (UTC)</th><th>Duration</th><th>RAM</th><th></th></tr></thead>
+                <tbody>
+                    {% for ex in executions %}
+                    <tr>
+                        <td><span class="tag {{ ex.status|status_class }}">{{ ex.status_display }}</span></td>
+                        <td class="is-size-7">{{ ex.trigger_display }}</td>
+                        <td class="is-size-7">{{ ex.started|date:"d.m H:i:s" }}</td>
+                        <td class="is-size-7">{{ ex.duration_sec|duration_human }}</td>
+                        <td class="is-size-7">{% if ex.max_rss_mb %}{{ ex.max_rss_mb }} MB{% else %}—{% endif %}</td>
+                        <td><a class="button is-small is-light" href="{% url 'log_detail' ex.token %}">
+                            <span class="icon is-small"><i class="fas fa-eye"></i></span></a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="has-text-centered has-text-grey">Not run yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

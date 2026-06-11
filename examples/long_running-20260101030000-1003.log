@@ -1,0 +1,25 @@
+# ===================== EXECUTION LOG (UTC) =====================
+# job:        Long Running
+# script:     /opt/chronicle/scripts/long_running.py
+# cwd:        /opt/chronicle/scripts
+# trigger:    MANUAL
+# user:       operator1
+# pid:        1003
+# started:    2026-01-01 03:00:00.001
+# ==============================================================
+2026-01-01 03:00:00.005  INFO    Long task started (will take 120s)
+2026-01-01 03:00:00.006  OUT     ... working (1/120)
+2026-01-01 03:00:01.007  OUT     ... working (2/120)
+2026-01-01 03:00:02.008  OUT     ... working (3/120)
+2026-01-01 03:00:05.012  ERROR   [SYSTEM] Script killed after 5s timeout.
+# --------------------------------------------------------------
+# status:           TIMEOUT
+# exit_code:        1
+# finished:         2026-01-01 03:00:05.015
+# duration_sec:     5.01
+# cpu_time_sec:     0.03
+# cpu_pct:          0.6
+# max_rss_mb:       12.0
+# summary_events:   error=1
+# summary_metrics:  -
+# ==============================================================

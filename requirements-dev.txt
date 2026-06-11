@@ -1,0 +1,4 @@
+# Development / testing dependencies
+-r requirements.txt
+
+coverage==7.6.4        # test coverage report (python -m coverage)

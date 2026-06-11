@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load scheduler_extras %}
+{% block title %}{{ run.job_name }} log{% endblock %}
+
+{% block extra_head %}
+    {% if run.is_running %}<meta http-equiv="refresh" content="5">{% endif %}
+{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+        <li><a href="{% url 'log_list' %}">Logs</a></li>
+        <li class="is-active"><a aria-current="page">{{ run.job_name }}</a></li>
+    </ul>
+</nav>
+
+<div class="level">
+    <div class="level-left">
+        <h1 class="title is-3">
+            {{ run.job_name }}
+            <span class="tag {{ run.status|status_class }} is-medium ml-2">
+                {% if run.is_running %}<span class="icon is-small"><i class="fas fa-spinner fa-pulse"></i></span>{% endif %}
+                {{ run.status_display }}
+            </span>
+        </h1>
+    </div>
+</div>
+
+<!-- ============ Meta + Resource ============ -->
+<div class="columns is-multiline">
+    <div class="column is-2-desktop is-4-tablet">
+        <div class="box has-text-centered">
+            <p class="heading">Exit Code</p>
+            <p class="title is-4 {% if run.exit_code == '0' %}has-text-success{% elif run.exit_code %}has-text-danger{% endif %}">{{ run.exit_code|default:"—" }}</p>
+        </div>
+    </div>
+    <div class="column is-2-desktop is-4-tablet">
+        <div class="box has-text-centered">
+            <p class="heading">Duration</p>
+            <p class="title is-4">{{ run.duration_sec|duration_human }}</p>
+        </div>
+    </div>
+    <div class="column is-2-desktop is-4-tablet">
+        <div class="box has-text-centered">
+            <p class="heading">CPU time</p>
+            <p class="title is-5">{% if run.cpu_time_sec != None %}{{ run.cpu_time_sec }}s{% else %}—{% endif %}</p>
+            <p class="is-size-7 has-text-grey">{% if run.cpu_pct != None %}~{{ run.cpu_pct }}%{% endif %}</p>
+        </div>
+    </div>
+    <div class="column is-2-desktop is-4-tablet">
+        <div class="box has-text-centered">
+            <p class="heading">Peak RAM</p>
+            <p class="title is-5">{% if run.max_rss_mb %}{{ run.max_rss_mb }} MB{% else %}—{% endif %}</p>
+        </div>
+    </div>
+    <div class="column is-2-desktop is-4-tablet">
+        <div class="box has-text-centered">
+            <p class="heading">Triggered by</p>
+            <p class="title is-6">{{ run.trigger_display }}</p>
+        </div>
+    </div>
+    <div class="column is-2-desktop is-4-tablet">
+        <div class="box has-text-centered">
+            <p class="heading">PID</p>
+            <p class="title is-5">{{ run.pid|default:"—" }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="box">
+    <table class="table is-fullwidth is-narrow">
+        <tbody>
+            <tr><th>Script</th><td><code>{{ run.script }}</code></td>
+                <th>Start (UTC)</th><td>{{ run.started|date:"Y-m-d H:i:s" }}</td></tr>
+            <tr><th>CWD</th><td><code>{{ run.cwd }}</code></td>
+                <th>End (UTC)</th><td>{% if run.finished %}{{ run.finished|date:"Y-m-d H:i:s" }}{% else %}— (in progress){% endif %}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+{% if run.header_extra or run.footer_extra %}
+<div class="box">
+    <h2 class="title is-6">
+        <span class="icon-text"><span class="icon"><i class="fas fa-tags"></i></span><span>Custom Fields</span></span>
+    </h2>
+    <table class="table is-fullwidth is-narrow">
+        <tbody>
+            {% for k, v in run.header_extra.items %}
+            <tr><th style="width:200px"><code>{{ k }}</code></th><td>{{ v }}</td><td class="has-text-grey is-size-7">header</td></tr>
+            {% endfor %}
+            {% for k, v in run.footer_extra.items %}
+            <tr><th style="width:200px"><code>{{ k }}</code></th><td>{{ v }}</td><td class="has-text-grey is-size-7">footer</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ============ Summaries ============ -->
+{% if run.event_summary or run.metric_summary %}
+<div class="columns">
+    {% if run.metric_summary %}
+    <div class="column">
+        <h2 class="title is-5">Metrics</h2>
+        <div class="tags">
+            {% for name, val in run.metric_summary.items %}
+            <span class="tags has-addons mr-2 mb-1">
+                <span class="tag is-link">{{ name }}</span><span class="tag is-dark">{{ val }}</span>
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% if run.event_summary %}
+    <div class="column">
+        <h2 class="title is-5">Events</h2>
+        <div class="tags">
+            {% for cat, cnt in run.event_summary.items %}
+            <span class="tags has-addons mr-2 mb-1">
+                <span class="tag {{ cat|event_class }}">{{ cat }}</span><span class="tag is-dark">{{ cnt }}</span>
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ============ Log lines (color-coded by level) ============ -->
+<h2 class="title is-5 mt-4">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-terminal"></i></span><span>Log Stream (UTC)</span>
+    </span>
+</h2>
+<div class="log-output">{% for ts, level, msg in lines %}<span class="has-text-grey">{{ ts }}</span>  <span class="tag {{ level|level_class }} is-small" style="vertical-align:baseline">{{ level }}</span>  {{ msg }}
+{% empty %}(no log lines){% endfor %}</div>
+{% endblock %}

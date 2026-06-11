@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Delete Script{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+<div class="column is-5-desktop is-7-tablet">
+    <div class="box">
+        <h1 class="title is-4 has-text-danger">
+            <span class="icon-text">
+                <span class="icon"><i class="fas fa-triangle-exclamation"></i></span>
+                <span>Delete Script</span>
+            </span>
+        </h1>
+        <p class="mb-4">
+            You are about to permanently delete the <strong>{{ object.name }}</strong> script
+            and <strong>all of its run logs</strong>.
+            This action cannot be undone.
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="field is-grouped">
+                <div class="control">
+                    <button class="button is-danger" type="submit">
+                        <span class="icon"><i class="fas fa-trash"></i></span>
+                        <span>Yes, Delete</span>
+                    </button>
+                </div>
+                <div class="control">
+                    <a class="button is-light" href="{% url 'job_list' %}">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}

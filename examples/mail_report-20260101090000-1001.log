@@ -1,0 +1,38 @@
+# ===================== EXECUTION LOG (UTC) =====================
+# job:        Mail Report
+# script:     /opt/chronicle/scripts/mail_report.py
+# cwd:        /opt/chronicle/scripts
+# trigger:    SCHEDULER
+# user:       svc_scheduler
+# pid:        1001
+# started:    2026-01-01 09:00:00.012
+# env: production
+# campaign: weekly-report
+# version: 2.3.1
+# ==============================================================
+2026-01-01 09:00:00.018  INFO    Processing mail report
+2026-01-01 09:00:00.041  EVENT   [email] To: user1@company.local | subject: Weekly Report
+2026-01-01 09:00:00.064  EVENT   [email] To: user2@company.local | subject: Weekly Report
+2026-01-01 09:00:00.088  WARN    SMTP timeout, retried: user3@company.local
+2026-01-01 09:00:00.089  EVENT   [email] To: user3@company.local | subject: Weekly Report (retry)
+2026-01-01 09:00:00.112  EVENT   [email] To: user4@company.local | subject: Weekly Report
+2026-01-01 09:00:00.135  ERROR   Delivery failed: user5@company.local
+2026-01-01 09:00:00.158  EVENT   [email] To: user6@company.local | subject: Weekly Report
+2026-01-01 09:00:00.402  METRIC  emails_sent=18
+2026-01-01 09:00:00.403  METRIC  emails_failed=2
+2026-01-01 09:00:00.404  METRIC  smtp_warnings=3
+2026-01-01 09:00:00.405  INFO    Done: 18 sent, 2 errors
+2026-01-01 09:00:00.406  OUT     Finished. Sent: 18, Warnings: 3, Errors: 2
+# --------------------------------------------------------------
+# status:           SUCCESS
+# exit_code:        0
+# finished:         2026-01-01 09:00:00.498
+# duration_sec:     0.49
+# cpu_time_sec:     0.07
+# cpu_pct:          14.3
+# max_rss_mb:       19.4
+# summary_events:   email=18 warning=3 error=2
+# summary_metrics:  emails_sent=18 emails_failed=2 smtp_warnings=3
+# recipients_total: 20
+# delivery_rate_pct: 90.0
+# ==============================================================

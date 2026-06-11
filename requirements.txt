@@ -1,0 +1,24 @@
+# --- Core ---
+# 5.2 LTS — Python 3.13/3.14 compatible (includes the Context.__copy__ fix).
+Django==5.2.15
+
+# --- LDAP Authentication ---
+# NOTE: python-ldap requires the OpenLDAP development headers on the system.
+#   Debian/Ubuntu : sudo apt-get install libldap2-dev libsasl2-dev libssl-dev
+#   RHEL/CentOS   : sudo yum install openldap-devel
+#   macOS (brew)  : brew install openldap && export LDFLAGS="-L$(brew --prefix openldap)/lib"
+django-auth-ldap==4.8.0
+python-ldap==3.4.4
+
+# --- Scheduler (Cron engine) ---
+django-apscheduler==0.7.0
+APScheduler==3.10.4
+
+# --- Helpers ---
+python-dotenv==1.0.1
+requests==2.32.3        # for Slack/Teams webhook notifications
+croniter==3.0.3         # Cron syntax validation / next run time calculation
+psutil==6.1.0           # per-execution RAM/CPU measurement
+
+# --- Production (optional) ---
+gunicorn==23.0.0

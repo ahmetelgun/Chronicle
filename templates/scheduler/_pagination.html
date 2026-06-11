@@ -1,0 +1,19 @@
+{% if is_paginated %}
+<nav class="pagination is-centered is-small" role="navigation" aria-label="pagination">
+    {% if page_obj.has_previous %}
+        <a class="pagination-previous" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Previous</a>
+    {% else %}
+        <a class="pagination-previous" disabled>Previous</a>
+    {% endif %}
+    {% if page_obj.has_next %}
+        <a class="pagination-next" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Next</a>
+    {% else %}
+        <a class="pagination-next" disabled>Next</a>
+    {% endif %}
+    <ul class="pagination-list">
+        <li><span class="pagination-link is-current">
+            Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+        </span></li>
+    </ul>
+</nav>
+{% endif %}

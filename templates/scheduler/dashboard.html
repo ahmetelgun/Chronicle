@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% load scheduler_extras %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="title is-3">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-gauge-high"></i></span>
+        <span>Dashboard</span>
+    </span>
+</h1>
+<p class="subtitle is-6 has-text-grey">Overview and run statistics for the last 24 hours</p>
+
+<!-- ============ Top Statistic Cards ============ -->
+<div class="columns is-multiline">
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-background-link-light">
+            <p class="heading">Total Scripts</p>
+            <p class="title is-2 has-text-link">{{ total_jobs }}</p>
+            <p class="is-size-7 has-text-grey">
+                {{ scheduled_jobs }} scheduled · {{ active_jobs }} active
+            </p>
+        </div>
+    </div>
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-background-success-light">
+            <p class="heading">Successful (24h)</p>
+            <p class="title is-2 has-text-success">{{ success_24h }}</p>
+            <p class="is-size-7 has-text-grey">Success rate: {{ success_rate }}%</p>
+        </div>
+    </div>
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-background-danger-light">
+            <p class="heading">Failed (24h)</p>
+            <p class="title is-2 has-text-danger">{{ failed_24h }}</p>
+            <p class="is-size-7 has-text-grey">Error + Timeout + System error</p>
+        </div>
+    </div>
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-background-info-light">
+            <p class="heading">Currently Running</p>
+            <p class="title is-2 has-text-info">
+                {{ running_now }}
+                {% if running_now %}<span class="icon is-small"><i class="fas fa-spinner fa-pulse"></i></span>{% endif %}
+            </p>
+            <p class="is-size-7 has-text-grey">
+                Avg duration: {{ avg_duration|duration_human }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="columns">
+    <!-- ============ Success/Failure Rate (CSS bar chart) ============ -->
+    <div class="column is-5">
+        <div class="box">
+            <h2 class="title is-5">Last 24 Hours Distribution</h2>
+            {% with total=success_24h|add:failed_24h %}
+            {% if total %}
+            <div class="mb-2">
+                <div class="is-flex is-justify-content-space-between">
+                    <span class="is-size-7">Successful</span>
+                    <span class="is-size-7 has-text-weight-bold">{{ success_24h }}</span>
+                </div>
+                <progress class="progress is-success" value="{{ success_24h }}" max="{{ total }}">
+                </progress>
+            </div>
+            <div class="mb-2">
+                <div class="is-flex is-justify-content-space-between">
+                    <span class="is-size-7">Failed</span>
+                    <span class="is-size-7 has-text-weight-bold">{{ failed_24h }}</span>
+                </div>
+                <progress class="progress is-danger" value="{{ failed_24h }}" max="{{ total }}">
+                </progress>
+            </div>
+            <div class="has-text-centered mt-4">
+                <span class="title is-1 {% if success_rate >= 90 %}has-text-success{% elif success_rate >= 70 %}has-text-warning{% else %}has-text-danger{% endif %}">
+                    {{ success_rate }}%
+                </span>
+                <p class="heading">Overall Success Rate</p>
+            </div>
+            {% else %}
+            <div class="notification is-light has-text-centered">
+                No run records in the last 24 hours.
+            </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <!-- ============ Recent Runs ============ -->
+    <div class="column is-7">
+        <div class="box">
+            <h2 class="title is-5">Recent Runs</h2>
+            {% if recent_executions %}
+            <table class="table is-fullwidth is-hoverable is-narrow">
+                <thead>
+                    <tr>
+                        <th>Script</th><th>Status</th><th>Triggered by</th>
+                        <th>Duration</th><th>Time</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ex in recent_executions %}
+                    <tr>
+                        <td class="is-vcentered">{{ ex.job_name }}</td>
+                        <td class="is-vcentered">
+                            <span class="tag {{ ex.status|status_class }}">{{ ex.status_display }}</span>
+                        </td>
+                        <td class="is-vcentered is-size-7">{{ ex.trigger_display }}</td>
+                        <td class="is-vcentered is-size-7">{{ ex.duration_sec|duration_human }}</td>
+                        <td class="is-vcentered is-size-7">{{ ex.started|date:"d.m H:i:s" }}</td>
+                        <td class="is-vcentered">
+                            <a class="button is-small is-light" href="{% url 'log_detail' ex.token %}">
+                                <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="notification is-light has-text-centered">No runs yet.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============ Custom Metrics Reported by Scripts ============ -->
+<h2 class="title is-4 mt-5">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-chart-simple"></i></span>
+        <span>Custom Metrics &amp; Events</span>
+    </span>
+    <span class="is-size-6 has-text-grey ml-2">(last 24 hours)</span>
+</h2>
+
+<div class="columns">
+    <!-- Numeric metrics -->
+    <div class="column is-7">
+        <div class="box">
+            <h3 class="title is-5">Metrics</h3>
+            {% if metric_totals %}
+            <div class="columns is-multiline">
+                {% for m in metric_totals %}
+                <div class="column is-4-desktop is-6-tablet">
+                    <div class="notification is-link is-light mb-0 has-text-centered">
+                        <p class="heading">{{ m.name }}</p>
+                        <p class="title is-3">{{ m.total|floatformat:"-2" }}</p>
+                        <p class="is-size-7 has-text-grey">from {{ m.count }} runs</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="notification is-light has-text-centered">
+                No metrics reported yet.
+                <br><span class="is-size-7">Use <code>@metric &lt;name&gt; &lt;value&gt;</code> in your scripts.</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Event categories -->
+    <div class="column is-5">
+        <div class="box">
+            <h3 class="title is-5">Events (by category)</h3>
+            {% if event_category_totals %}
+            <div class="tags">
+                {% for c in event_category_totals %}
+                <span class="tags has-addons mr-2 mb-1">
+                    <span class="tag {{ c.category|event_class }}">{{ c.category }}</span>
+                    <span class="tag is-dark">{{ c.count }}</span>
+                </span>
+                {% endfor %}
+            </div>
+            <p class="is-size-7 has-text-grey mt-2">
+                Individual event details (e.g. the recipient of each email) appear in the relevant log file.
+            </p>
+            {% else %}
+            <div class="notification is-light has-text-centered">
+                No events reported yet.
+                <br><span class="is-size-7">Use <code>@event &lt;category&gt; &lt;message&gt;</code> in your scripts.</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============ Resource Usage (last 24 hours) ============ -->
+<h2 class="title is-4 mt-5">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-microchip"></i></span>
+        <span>Resource Usage</span>
+    </span>
+    <span class="is-size-6 has-text-grey ml-2">(last 24 hours)</span>
+</h2>
+<div class="columns">
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-text-centered">
+            <p class="heading">Avg Run Duration</p>
+            <p class="title is-3">{{ avg_duration|duration_human }}</p>
+        </div>
+    </div>
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-text-centered">
+            <p class="heading">Avg CPU</p>
+            <p class="title is-3">{% if avg_cpu_pct != None %}{{ avg_cpu_pct }}%{% else %}—{% endif %}</p>
+        </div>
+    </div>
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-text-centered has-background-warning-light">
+            <p class="heading">Peak RAM</p>
+            <p class="title is-3 has-text-warning-dark">{% if peak_rss_mb %}{{ peak_rss_mb }} MB{% else %}—{% endif %}</p>
+        </div>
+    </div>
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-text-centered">
+            <p class="heading">Avg RAM</p>
+            <p class="title is-3">{% if avg_rss_mb %}{{ avg_rss_mb }} MB{% else %}—{% endif %}</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============ Custom Footer Fields Reported by Scripts (last 24 hours) ============ -->
+{% if custom_footer_totals %}
+<h2 class="title is-4 mt-5">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-tags"></i></span>
+        <span>Custom Footer Fields</span>
+    </span>
+    <span class="is-size-6 has-text-grey ml-2">(last 24 hours — numeric fields)</span>
+</h2>
+<div class="columns is-multiline">
+    {% for f in custom_footer_totals %}
+    <div class="column is-3-desktop is-6-tablet">
+        <div class="box stat-card has-background-primary-light has-text-centered">
+            <p class="heading">{{ f.key }}</p>
+            <p class="title is-3 has-text-primary">{{ f.avg }}</p>
+            <p class="is-size-7 has-text-grey">avg · total {{ f.total }} · {{ f.count }} runs</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

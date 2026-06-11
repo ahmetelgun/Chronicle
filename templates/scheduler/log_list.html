@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load scheduler_extras %}
+{% block title %}Logs{% endblock %}
+
+{% block content %}
+<h1 class="title is-3">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-scroll"></i></span>
+        <span>Run Logs</span>
+    </span>
+</h1>
+<p class="subtitle is-6 has-text-grey">
+    Read from files — standalone runs outside the scheduler are also listed. Times are in UTC.
+</p>
+
+<!-- Filters -->
+<div class="box">
+    <form method="get" class="columns is-vcentered">
+        <div class="column is-4">
+            <div class="field">
+                <label class="label is-small">Script</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select name="job">
+                            <option value="">All</option>
+                            {% for j in jobs %}
+                            <option value="{{ j.id }}" {% if selected_job == j.id|stringformat:"s" %}selected{% endif %}>{{ j.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column is-4">
+            <div class="field">
+                <label class="label is-small">Status</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select name="status">
+                            <option value="">All</option>
+                            {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column is-4">
+            <label class="label is-small">&nbsp;</label>
+            <button class="button is-link" type="submit">
+                <span class="icon"><i class="fas fa-filter"></i></span><span>Filter</span>
+            </button>
+            <a class="button is-light" href="{% url 'log_list' %}">Clear</a>
+        </div>
+    </form>
+</div>
+
+<div class="box">
+<table class="table is-fullwidth is-hoverable is-striped is-narrow">
+    <thead>
+        <tr>
+            <th>Script</th><th>Status</th><th>Exit</th><th>Triggered by</th>
+            <th>Start (UTC)</th><th>Duration</th><th>CPU%</th><th>RAM</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for run in runs %}
+        <tr>
+            <td class="is-vcentered">{{ run.job_name }}</td>
+            <td class="is-vcentered"><span class="tag {{ run.status|status_class }}">{{ run.status_display }}</span></td>
+            <td class="is-vcentered"><code>{{ run.exit_code|default:"—" }}</code></td>
+            <td class="is-vcentered is-size-7">{{ run.trigger_display }}</td>
+            <td class="is-vcentered is-size-7">{{ run.started|date:"d.m.Y H:i:s" }}</td>
+            <td class="is-vcentered is-size-7">{{ run.duration_sec|duration_human }}</td>
+            <td class="is-vcentered is-size-7">{% if run.cpu_pct != None %}{{ run.cpu_pct }}%{% else %}—{% endif %}</td>
+            <td class="is-vcentered is-size-7">{% if run.max_rss_mb %}{{ run.max_rss_mb }} MB{% else %}—{% endif %}</td>
+            <td class="is-vcentered">
+                <a class="button is-small is-light" href="{% url 'log_detail' run.token %}">
+                    <span class="icon is-small"><i class="fas fa-eye"></i></span><span>Details</span>
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="has-text-centered has-text-grey py-5">
+            No records found. As scripts write to the <code>logs/</code> directory, they appear here.
+        </td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% include "scheduler/_pagination.html" %}
+{% endblock %}

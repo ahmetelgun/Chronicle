@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+<div class="column is-7-desktop is-9-tablet">
+<h1 class="title is-3">
+    <span class="icon-text">
+        <span class="icon"><i class="fas fa-gear"></i></span>
+        <span>Notification Settings</span>
+    </span>
+</h1>
+<p class="subtitle is-6 has-text-grey">
+    When a script finishes with an <strong>Error</strong> or is killed by a <strong>Timeout</strong>,
+    a critical error notification is automatically sent to the webhook below.
+</p>
+
+<div class="box">
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="notification is-danger is-light">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="field">
+            <label class="label">Provider</label>
+            <div class="control">{{ form.provider }}</div>
+        </div>
+
+        <div class="field">
+            <label class="label">Webhook URL</label>
+            <div class="control has-icons-left">
+                {{ form.webhook_url }}
+                <span class="icon is-small is-left"><i class="fas fa-link"></i></span>
+            </div>
+            <p class="help">Slack: <code>https://hooks.slack.com/services/...</code> · Teams: <code>https://outlook.office.com/webhook/...</code></p>
+            {% for e in form.webhook_url.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label class="checkbox">{{ form.notify_on_failure }} Notify on error (exit code ≠ 0)</label>
+        </div>
+        <div class="field">
+            <label class="checkbox">{{ form.notify_on_timeout }} Notify on timeout</label>
+        </div>
+
+        <hr>
+        <button class="button is-primary" type="submit">
+            <span class="icon"><i class="fas fa-save"></i></span><span>Save</span>
+        </button>
+    </form>
+</div>
+
+<div class="notification is-info is-light is-size-7">
+    <strong>Tip:</strong> If the webhook URL is left empty, no notifications are sent.
+    The notification message includes the script name, status, exit code, triggering user, and
+    the first 200 characters of the error log.
+</div>
+</div>
+</div>
+{% endblock %}

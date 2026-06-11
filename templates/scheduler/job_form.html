@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Edit Script{% else %}New Script{% endif %}{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+<div class="column is-7-desktop is-9-tablet">
+<h1 class="title is-3">
+    <span class="icon-text">
+        <span class="icon"><i class="fas {% if form.instance.pk %}fa-pen{% else %}fa-plus{% endif %}"></i></span>
+        <span>{% if form.instance.pk %}Edit Script{% else %}Add New Script{% endif %}</span>
+    </span>
+</h1>
+
+<div class="box">
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="notification is-danger is-light">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="field">
+            <label class="label">Script Name *</label>
+            <div class="control">{{ form.name }}</div>
+            {% for e in form.name.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label class="label">Description</label>
+            <div class="control">{{ form.description }}</div>
+            {% for e in form.description.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label class="label">Script File Path *</label>
+            <div class="control has-icons-left">
+                {{ form.script_path }}
+                <span class="icon is-small is-left"><i class="fas fa-file-code"></i></span>
+            </div>
+            <p class="help">Must be under an allowed root directory (e.g. /opt/scripts/backup.sh).</p>
+            {% for e in form.script_path.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label class="label">Working Directory (CWD)</label>
+            <div class="control has-icons-left">
+                {{ form.working_directory }}
+                <span class="icon is-small is-left"><i class="fas fa-folder"></i></span>
+            </div>
+            <p class="help">If left empty, the directory containing the script is used.</p>
+            {% for e in form.working_directory.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="columns">
+            <div class="column">
+                <div class="field">
+                    <label class="label">Cron Schedule</label>
+                    <div class="control has-icons-left">
+                        {{ form.cron_expression }}
+                        <span class="icon is-small is-left"><i class="fas fa-clock"></i></span>
+                    </div>
+                    <p class="help"><code>minute hour day month day-of-week</code> — e.g. <code>0 2 * * *</code> (every day at 02:00). If empty, it is not scheduled automatically.</p>
+                    {% for e in form.cron_expression.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Timeout (seconds) *</label>
+                    <div class="control has-icons-left">
+                        {{ form.timeout_seconds }}
+                        <span class="icon is-small is-left"><i class="fas fa-hourglass-half"></i></span>
+                    </div>
+                    <p class="help">The process is killed if the time runs out (Timeout).</p>
+                    {% for e in form.timeout_seconds.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="checkbox">
+                {{ form.is_active }} Active (inactive scripts are not scheduled and cannot be run)
+            </label>
+        </div>
+
+        <hr>
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-primary" type="submit">
+                    <span class="icon"><i class="fas fa-save"></i></span>
+                    <span>Save</span>
+                </button>
+            </div>
+            <div class="control">
+                <a class="button is-light" href="{% url 'job_list' %}">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+</div>
+</div>
+{% endblock %}

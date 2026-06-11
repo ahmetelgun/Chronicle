@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="theme-light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Job Scheduler{% endblock %} · Job Scheduler</title>
+
+    <!-- Bulma CSS (CDN) -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+    <!-- Icons -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { display: flex; flex-direction: column; min-height: 100vh; }
+        .main-content { flex: 1; }
+        .log-output {
+            background: #1e1e2e; color: #cdd6f4; font-family: 'Fira Code', monospace;
+            padding: 1.25rem; border-radius: 6px; white-space: pre-wrap;
+            word-break: break-word; max-height: 480px; overflow-y: auto; font-size: 0.85rem;
+        }
+        .log-output.stderr { background: #2a1e1e; color: #f8c8c8; }
+        .stat-card .title { margin-bottom: 0.25rem; }
+        .navbar-item.is-active { font-weight: 600; }
+        .table td.is-vcentered, .table th.is-vcentered { vertical-align: middle; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<!-- ===================== Navbar ===================== -->
+<nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+        <a class="navbar-item has-text-weight-bold" href="{% url 'dashboard' %}">
+            <span class="icon mr-1"><i class="fas fa-clock-rotate-left"></i></span>
+            Job Scheduler
+        </a>
+        <a role="button" class="navbar-burger" data-target="mainNavbar" aria-label="menu">
+            <span></span><span></span><span></span>
+        </a>
+    </div>
+    <div id="mainNavbar" class="navbar-menu">
+        {% if user.is_authenticated %}
+        <div class="navbar-start">
+            <a class="navbar-item" href="{% url 'dashboard' %}">
+                <span class="icon"><i class="fas fa-gauge-high"></i></span><span>Dashboard</span>
+            </a>
+            <a class="navbar-item" href="{% url 'job_list' %}">
+                <span class="icon"><i class="fas fa-list-check"></i></span><span>Scripts</span>
+            </a>
+            <a class="navbar-item" href="{% url 'log_list' %}">
+                <span class="icon"><i class="fas fa-scroll"></i></span><span>Logs</span>
+            </a>
+            {% if can_manage %}
+            <a class="navbar-item" href="{% url 'settings' %}">
+                <span class="icon"><i class="fas fa-gear"></i></span><span>Settings</span>
+            </a>
+            {% endif %}
+        </div>
+        <div class="navbar-end">
+            <div class="navbar-item">
+                <span class="tag is-info is-light mr-2">
+                    {% for g in user.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% empty %}Unauthorized{% endfor %}
+                </span>
+                <span class="icon mr-1"><i class="fas fa-user"></i></span>
+                <span>{{ user.get_username }}</span>
+            </div>
+            <div class="navbar-item">
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button class="button is-small is-light" type="submit">
+                        <span class="icon"><i class="fas fa-right-from-bracket"></i></span>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</nav>
+
+<!-- ===================== Content ===================== -->
+<section class="section main-content">
+    <div class="container is-fluid">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="notification {% if message.tags == 'error' %}is-danger{% elif message.tags == 'warning' %}is-warning{% elif message.tags == 'success' %}is-success{% else %}is-info{% endif %} is-light">
+                <button class="delete" onclick="this.parentElement.remove()"></button>
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+</section>
+
+<!-- ===================== Footer ===================== -->
+<footer class="footer py-4">
+    <div class="content has-text-centered">
+        <p class="is-size-7 has-text-grey">
+            <strong>Web-Based Job Scheduler</strong> · Django + Bulma · LDAP/RBAC
+        </p>
+    </div>
+</footer>
+
+<script>
+    // Navbar burger (mobile) toggle
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.navbar-burger').forEach(el => {
+            el.addEventListener('click', () => {
+                const target = document.getElementById(el.dataset.target);
+                el.classList.toggle('is-active');
+                target.classList.toggle('is-active');
+            });
+        });
+    });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

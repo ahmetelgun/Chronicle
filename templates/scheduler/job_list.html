@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% load scheduler_extras %}
+{% block title %}Scripts{% endblock %}
+
+{% block content %}
+<div class="level">
+    <div class="level-left">
+        <div class="level-item">
+            <h1 class="title is-3">
+                <span class="icon-text">
+                    <span class="icon"><i class="fas fa-list-check"></i></span>
+                    <span>Scripts</span>
+                </span>
+            </h1>
+        </div>
+    </div>
+    <div class="level-right">
+        <div class="level-item">
+            <form method="get" class="field has-addons mb-0">
+                <div class="control">
+                    <input class="input" type="text" name="q" value="{{ search_query }}"
+                           placeholder="Search by script name / path...">
+                </div>
+                <div class="control">
+                    <button class="button"><span class="icon"><i class="fas fa-search"></i></span></button>
+                </div>
+            </form>
+        </div>
+        {% if can_manage %}
+        <div class="level-item">
+            <a class="button is-primary" href="{% url 'job_create' %}">
+                <span class="icon"><i class="fas fa-plus"></i></span>
+                <span>New Script</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="box">
+<table class="table is-fullwidth is-hoverable is-striped">
+    <thead>
+        <tr>
+            <th>Script Name</th>
+            <th>File Path / CWD</th>
+            <th>Cron</th>
+            <th>Last Status</th>
+            <th>Active</th>
+            <th class="has-text-right">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs %}
+        {% with last=job.last_execution %}
+        <tr data-job-id="{{ job.pk }}">
+            <td class="is-vcentered">
+                <a href="{% url 'job_detail' job.pk %}" class="has-text-weight-semibold">{{ job.name }}</a>
+                <span class="tag is-info is-light ml-1 js-running-badge"{% if not job.is_running %} style="display:none"{% endif %}>
+                    <span class="icon is-small"><i class="fas fa-spinner fa-pulse"></i></span>
+                    <span>running</span>
+                </span>
+            </td>
+            <td class="is-vcentered is-size-7">
+                <code>{{ job.script_path }}</code>
+                {% if job.working_directory %}<br><span class="has-text-grey">cwd: {{ job.working_directory }}</span>{% endif %}
+            </td>
+            <td class="is-vcentered">
+                {% if job.cron_expression %}
+                    <code>{{ job.cron_expression }}</code>
+                {% else %}
+                    <span class="tag is-light">Manual</span>
+                {% endif %}
+            </td>
+            <td class="is-vcentered">
+                {% if last %}
+                    <span class="tag {{ last.status|status_class }} js-status">{{ last.status_display }}</span>
+                    <br><span class="is-size-7 has-text-grey js-started">{{ last.started|date:"d.m H:i" }}</span>
+                {% else %}
+                    <span class="tag is-light js-status">—</span>
+                    <br><span class="is-size-7 has-text-grey js-started"></span>
+                {% endif %}
+            </td>
+            <td class="is-vcentered">
+                {% if job.is_active %}
+                    <span class="icon has-text-success"><i class="fas fa-circle-check"></i></span>
+                {% else %}
+                    <span class="icon has-text-grey-light"><i class="fas fa-circle-xmark"></i></span>
+                {% endif %}
+            </td>
+            <td class="is-vcentered has-text-right">
+                <div class="buttons is-right are-small">
+                    {% if can_run %}
+                    <form method="post" action="{% url 'job_run' job.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button class="button is-success is-small js-run-btn" type="submit"
+                                {% if not job.is_active or job.is_running %}disabled{% endif %}
+                                title="Run Now">
+                            <span class="icon is-small"><i class="fas fa-play"></i></span>
+                            <span>Run</span>
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if can_manage %}
+                    <a class="button is-small is-info is-light" href="{% url 'job_update' job.pk %}" title="Edit">
+                        <span class="icon is-small"><i class="fas fa-pen"></i></span>
+                    </a>
+                    <form method="post" action="{% url 'job_duplicate' job.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button class="button is-small is-light" type="submit" title="Duplicate">
+                            <span class="icon is-small"><i class="fas fa-clone"></i></span>
+                        </button>
+                    </form>
+                    <a class="button is-small is-danger is-light" href="{% url 'job_delete' job.pk %}" title="Delete">
+                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                    </a>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="6" class="has-text-centered has-text-grey py-5">
+            No scripts defined yet.
+            {% if can_manage %}<a href="{% url 'job_create' %}">Add the first script.</a>{% endif %}
+        </td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% include "scheduler/_pagination.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Live-update the list page without reloading:
+// periodically calls the lightweight JSON status endpoint and updates rows.
+// Polls fast (3s) when a job is running, slow (15s) when idle.
+(function () {
+    const STATUS_URL = "{% url 'job_status_api' %}";
+    let timer = null;
+
+    function schedule(active) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(poll, active ? 3000 : 15000);
+    }
+
+    async function poll() {
+        try {
+            const resp = await fetch(STATUS_URL, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+            });
+            if (!resp.ok) { schedule(false); return; }
+            const data = await resp.json();
+
+            for (const [id, s] of Object.entries(data.jobs || {})) {
+                const row = document.querySelector('tr[data-job-id="' + id + '"]');
+                if (!row) continue;
+
+                const tag = row.querySelector(".js-status");
+                if (tag) {
+                    tag.className = "tag js-status " + s.status_class;
+                    tag.textContent = s.status_display;
+                }
+                const started = row.querySelector(".js-started");
+                if (started) started.textContent = s.started || "";
+
+                const badge = row.querySelector(".js-running-badge");
+                if (badge) badge.style.display = s.is_running ? "" : "none";
+
+                const btn = row.querySelector(".js-run-btn");
+                if (btn) btn.disabled = s.is_running || !s.is_active;
+            }
+            schedule(data.running_any);
+        } catch (e) {
+            schedule(false); // network error: keep retrying slowly anyway
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", poll);
+})();
+</script>
+{% endblock %}
